@@ -8,7 +8,7 @@ from skipjack import SKIPJACK_POST_URL, SKIPJACK_TEST_POST_URL
 
 
 class PaymentHelper(object):
-    " Helper for sending and receiving data from Skipjack. "
+    """Helper for sending and receiving data from Skipjack."""
     def __init__(self, defaults):
         self.defaults = defaults
         if settings.SKIPJACK_DEBUG:
@@ -17,7 +17,7 @@ class PaymentHelper(object):
             self.endpoint = SKIPJACK_POST_URL
     
     def get_response(self, data):
-        " Gets the response from Skipjack from the supplied data. "
+        """Gets the response from Skipjack from the supplied data."""
         final_data = self.defaults + data # These must be lists, not dicts.
         request_string = urllib.urlencode(final_data)
         response = urllib2.urlopen(self.endpoint, data=request_string).read()

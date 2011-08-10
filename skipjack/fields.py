@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Credit card fields for usage with any payment capture form.
+Not strictly required for Skipjack, but useful for building forms.
+
+"""
 from datetime import date
 from calendar import monthrange
 
@@ -11,11 +16,10 @@ from skipjack.creditcard import verify_credit_card
 
 
 class CreditCardField(forms.CharField):
-    """
-    Form field for checking out a credit card.
-    """
+    """Form field for checking out a credit card."""
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('max_length', 20)
+        self.card_type = None
         super(CreditCardField, self).__init__(*args, **kwargs)
 
     def clean(self, value):
@@ -46,6 +50,7 @@ class CreditCardExpiryWidget(forms.MultiWidget):
 
 
 class CreditCardExpiryField(forms.MultiValueField):
+    """Form field for the expiration date on a credit card."""
     EXP_MONTH = [(x, "%02d" % x) for x in xrange(1, 13)]
     EXP_YEAR = [(x, x) for x in xrange(date.today().year,
                                        date.today().year + 15)]
@@ -97,6 +102,11 @@ class CreditCardExpiryField(forms.MultiValueField):
 
 
 class CreditCardCVV2Field(forms.CharField):
+    """
+    Form field for the CVV2 (card verification value) value
+    on a credit card
+    
+    """
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('max_length', 4)
         super(CreditCardCVV2Field, self).__init__(*args, **kwargs)
@@ -349,6 +359,7 @@ COUNTRIES = (
 
 
 class CountryField(forms.ChoiceField):
+    """Form field that displays a list of countries."""
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('choices', COUNTRIES)
         super(CountryField, self).__init__(*args, **kwargs)

@@ -1,3 +1,4 @@
+"""Admin definitions for the Skipjack usage in Django's admin site."""
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
@@ -5,6 +6,7 @@ from skipjack.models import Response
 
 
 class ResponseAdmin(admin.ModelAdmin):
+    """Admin model for the Response model."""
     list_display = ('transaction_id',
                     'created',
                     'return_code',
@@ -43,12 +45,14 @@ class ResponseAdmin(admin.ModelAdmin):
     )
     
     def is_approved(self, object_):
-        " Transform Response.is_approved into a boolean for display purposes. "
-        # See: http://www.peterbe.com/plog/dislike-for-booleans-and-django-admin
+        """
+        Transform Response.is_approved into a boolean for display purposes.
+        See: http://www.peterbe.com/plog/dislike-for-booleans-and-django-admin
+        
+        """
         return object_.is_approved 
     is_approved.short_description = u'Approved?' 
     is_approved.boolean = True
-    
-    
+
 
 admin.site.register(Response, ResponseAdmin)

@@ -1,3 +1,12 @@
+"""
+Utility methods to aid usage of Skipjack.
+
+Usage:
+
+Send some data (as a list of tuples as per the DEFAULT_LIST) and
+call create_response(data) and get a Response model object back.
+
+"""
 from django.conf import settings
 
 from skipjack.helpers import PaymentHelper
