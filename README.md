@@ -1,7 +1,7 @@
 django-skipjack
 ===============
 
-*Django integration with [Skipjack](http://www.skipjack.com/) payment gateway.*
+*Django integration with [Skipjack](http://www.skipjack.com/), a payment gateway.*
 
 Includes the AuthorizeAPI implementation for payment submission useful in
 shopping cart integration and integration into custom CRM payment solutions.
