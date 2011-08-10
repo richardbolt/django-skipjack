@@ -18,7 +18,8 @@ The ``response`` variable returned from the ``create_response()`` is a
     
     final_data = (
         # Using a tuples to ensure order of the urlencoded string.
-        # This apparently matters a great deal to Skipjack.
+        # This apparently matters a great deal to Skipjack. The SerialNumber
+        # must come first, and be followed by the DeveloperSerialNumber.
         ('SerialNumber', '000111222333'),       # Required.
         ('DeveloperSerialNumber', 'ABC123456789'),
         # Billing Information
