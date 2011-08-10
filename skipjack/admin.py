@@ -8,7 +8,7 @@ from skipjack.models import Response
 class ResponseAdmin(admin.ModelAdmin):
     """Admin model for the Response model."""
     list_display = ('transaction_id',
-                    'created',
+                    'creation_date',
                     'return_code',
                     'auth_code',
                     'amount',
@@ -16,7 +16,7 @@ class ResponseAdmin(admin.ModelAdmin):
                     'order_number',
                     'is_approved',
                     'test_request')
-    list_filter = ('test_request', 'approved', 'created')
+    list_filter = ('test_request', 'approved', 'creation_date')
     readonly_fields = ('transaction_id',
                        'auth_code', 
                        'amount', 
@@ -31,7 +31,7 @@ class ResponseAdmin(admin.ModelAdmin):
                        'return_code',
                        'cavv_response',
                        'test_request',
-                       'created')
+                       'creation_date')
     fieldsets = (
         (None, {
             'fields': [('transaction_id', 'return_code', 'test_request')]

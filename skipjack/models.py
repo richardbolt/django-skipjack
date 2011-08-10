@@ -1,5 +1,6 @@
-" Skipjack response models. "
+"""Skipjack response models."""
 from django.db import models
+
 
 RETURN_CODE_CHOICES = (
     (1, 'Success'),
@@ -134,7 +135,7 @@ RESPONSE_MAPPING = {  # Map Skipjack return fields to Response model fields.
 
 
 class ResponseManager(models.Manager):
-    " Solely to provide a create_from_dict() shortcut method. "
+    """Solely to provide a create_from_dict() shortcut method."""
     def create_from_dict(self, params):
         """
         Handle creation of a Response object directly from a
@@ -147,9 +148,14 @@ class ResponseManager(models.Manager):
 
 
 class Response(models.Model):
-    " Response from Skipjack. Contains the fields returned by SkipJack. "
-    transaction_id = models.CharField(max_length=18,  # NB: min_length=10
-                                      primary_key=True)
+    """
+    Response from Skipjack. Contains the fields returned by SkipJack.
+    
+    The transaction_id can be blank, and will be blank if return_code is
+    something other than 1.
+    
+    """
+    transaction_id = models.CharField(max_length=18, blank=True)
     auth_code = models.CharField(max_length=6,  # NB: min_length=6
                                  blank=True)
     amount = models.CharField(max_length=12,  # NB: min_length=3
@@ -172,13 +178,13 @@ class Response(models.Model):
                                      choices=CAVV_RESPONSE_CODE_CHOICES)
     test_request = models.BooleanField(default=False)
     
-    created = models.DateTimeField(auto_now_add=True)
+    creation_date = models.DateTimeField(auto_now_add=True)
     
     objects = ResponseManager()
     
     @property
     def is_approved(self):
-        " If the transaction was successful, or not. "
+        """If the transaction was successful, or not."""
         if (self.return_code in (1, '1') and self.auth_code and \
                                       self.auth_response_code):
             return True
@@ -189,5 +195,5 @@ class Response(models.Model):
                 (self.transaction_id, self.amount, self.auth_response_code)
     
     class Meta:
-        ordering = ['-created']
+        ordering = ['-creation_date']
 
