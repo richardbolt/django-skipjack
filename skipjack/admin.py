@@ -2,11 +2,11 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from skipjack.models import Response
+from skipjack.models import Transaction
 
 
-class ResponseAdmin(admin.ModelAdmin):
-    """Admin model for the Response model."""
+class TransactionAdmin(admin.ModelAdmin):
+    """Admin model for the Transaction model."""
     list_display = ('transaction_id',
                     'creation_date',
                     'return_code',
@@ -46,7 +46,7 @@ class ResponseAdmin(admin.ModelAdmin):
     
     def is_approved(self, object_):
         """
-        Transform Response.is_approved into a boolean for display purposes.
+        Transform Transaction.is_approved into a boolean for display purposes.
         See: http://www.peterbe.com/plog/dislike-for-booleans-and-django-admin
         
         """
@@ -55,4 +55,4 @@ class ResponseAdmin(admin.ModelAdmin):
     is_approved.boolean = True
 
 
-admin.site.register(Response, ResponseAdmin)
+admin.site.register(Transaction, TransactionAdmin)
