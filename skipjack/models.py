@@ -4,6 +4,7 @@ from decimal import Decimal
 import time
 
 from django.db import models
+from django.utils.encoding import smart_unicode
 
 
 RETURN_CODE_CHOICES = (
@@ -366,6 +367,17 @@ class Status(object):
             self.amount = Decimal(self.amount)
         self.current_status = int(self.code[0])
         self.pending_status = int(self.code[1])
+    
+    def __repr__(self):
+        return smart_unicode('<Status: %s>' % str(self))
+        
+    def __str__(self):
+        if self.transaction_id and self.message_detail:
+            return smart_unicode('%s - %s' % (self.transaction_id, self.message_detail))
+        elif self.transaction_id:
+            return smart_unicode('%s' % self.transaction_id)
+        else:
+            return smart_unicode('Status unknown')
     
     @property
     def transaction(self):
