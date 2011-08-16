@@ -11,10 +11,10 @@ Quickstart
 ----------
 
 Below is a quick example to help you get started processing with Skipjack.
-The ``response`` variable returned from the ``create_response()`` is a
-``Response`` object as defined in ``skipjack/models.py``.
+The ``response`` variable returned from the ``create_transaction()`` is a
+``Transaction`` object as defined in ``skipjack/models.py``.
 
-    from skipjack.utils import create_response
+    from skipjack.utils import create_transaction
     
     final_data = (
         # Using a tuples to ensure order of the urlencoded string.
@@ -48,7 +48,7 @@ The ``response`` variable returned from the ``create_response()`` is a
         ('CVV2', '1234')                        # Optional.
         )
     
-    response = create_response(final_data)
+    transaction = create_transaction(final_data)
 
 - - -
 

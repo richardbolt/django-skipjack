@@ -4,6 +4,7 @@ from decimal import Decimal
 import time
 
 from django.db import models
+from django.db.models.signals import pre_delete
 from django.utils.encoding import smart_unicode
 
 
@@ -180,6 +181,10 @@ PENDING_STATUS_CHOICES = (
     (7, 'Submitted for Settlement')
 )
 
+SUCCESSFUL = 'SUCCESSFUL'
+UNSUCCESSFUL = 'UNSUCCESSFUL'
+NOT_ALLOWED = 'NOT ALLOWED'
+
 
 class TransactionError(StandardError):
     """Use for Transaction related errors."""
@@ -210,8 +215,15 @@ class Transaction(models.Model):
     The transaction_id can be blank, and will be blank if return_code is
     something other than 1. These indicate failed transactions.
     
+    WARNING: The transaction_id changes when a transaction moves through
+             processing at Skipjack. This does not appear to be documented
+             anywhere. For instance, a transaction is authorized, and then
+             settle() is called to settle the transaction, then later the
+             transaction id will change when the transaction is actually
+             settled. This is incredibly annoying.
+    
     """
-    transaction_id = models.CharField(max_length=18, primary_key=True)
+    transaction_id = models.CharField(max_length=18, db_index=True)
     auth_code = models.CharField(max_length=6,  # NB: min_length=6
                                  blank=True)
     amount = models.CharField(max_length=12,  # NB: min_length=3
@@ -220,7 +232,7 @@ class Transaction(models.Model):
     avs_code = models.CharField(max_length=10,
                                 choices=AVS_RESPONSE_CODE_CHOICES)
     avs_message = models.CharField(max_length=60, blank=True)
-    order_number = models.CharField(max_length=20)
+    order_number = models.CharField(max_length=20, db_index=True)
     auth_response_code = models.CharField(max_length=6,  # NB: min_length=6
                                           blank=True)
     approved = models.CharField(max_length=1, blank=True,
@@ -264,16 +276,22 @@ class Transaction(models.Model):
         Updates the current status directly with a call to Skipjack.
         
         You will need to call self.save() to ensure the status_text
-        and status_date are written to the database, should you require it.
+        and date are written to the database, should you require it.
+        
+        NOTE: Skipjack will change the Transaction Id when a transaction moves
+              through processing from Authorized to Settled. This is problematic
+              and something to watch out for.
         
         """
         from skipjack.utils import get_transaction_status
         status = get_transaction_status(self.order_number,
                                         transaction_id=self.transaction_id)
-        self.status = status.message
+        self.status_text = status.message_detail
         self.current_status = status.current_status
         self.pending_status = status.pending_status
         self.status_date = status.date
+        if status.transaction_id != self.transaction_id:
+            self.transaction_id = status.transaction_id
         return status
     
     def update_status(self):
@@ -296,21 +314,36 @@ class Transaction(models.Model):
         so we'll only allow a subset of what you could do.
         
         """
-        raise NotImplementedError
+        from skipjack.utils import change_transaction_status
+        return change_transaction_status(self.transaction_id, status, amount)
     
     def settle(self):
-        """Settle a previously Authorized transaction."""
-        if self.current_status != AUTHORIZED or self.pending_status in (
-                                PENDING_SETTLEMENT, SUBMITTED_FOR_SETTLEMENT):
-            raise TransactionError('Settlement no allowed for %s transactions' %
-                                    self.get_current_status_display())
-        self._change_status('SETTLE')
+        """
+        Settle a previously Authorized transaction.
+        
+        This places an Authorized transaction into the Settlement queue to be
+        settled according to the preferences set for the Merchant Account in
+        the Skipjack system.
+        
+        """
+        if self.current_status != AUTHORIZED or self.pending_status == \
+                                                    SUBMITTED_FOR_SETTLEMENT:
+            raise TransactionError(
+                'Settlement not allowed for %s transactions' % self.status_text)
+        # Need to report back if this request was not successful.
+        response = self._change_status('SETTLE')
+        if response.status != SUCCESSFUL:
+            raise TransactionError('Sorry, Skipjack said %s - %s' % (
+                                    response.status, response.message))
     
     def refund(self):
         """Full refund."""
         if self.current_status != SETTLED or self.pending_status:
             raise TransactionError('Transaction must be Settled to refund.')
-        self._change_status('CREDIT', self.amount)
+        response = self._change_status('CREDIT', self.amount)
+        if response.status != SUCCESSFUL:
+            raise TransactionError('Sorry, Skipjack said %s - %s' % (
+                                    response.status, response.message))
     
     def partial_refund(self, amount=None):
         """Partially refund the Transaction."""
@@ -324,17 +357,43 @@ class Transaction(models.Model):
         if self.current_status != SETTLED or self.pending_status:
             raise TransactionError('Transaction status prevents a partial '\
                                    'refund at this time.')
-        self._change_status('CREDIT', amount=amount.quantize(Decimal('0.01')))
+        response = self._change_status('CREDIT',
+                                       amount=amount.quantize(Decimal('0.01')))
+        if response.status != SUCCESSFUL:
+            raise TransactionError('Sorry, Skipjack said %s - %s' % (
+                                    response.status, response.message))
     
     def delete_transaction(self):
-        """Mark the transaction as deleted. Not for Settled transactions."""
+        """
+        Mark the transaction as deleted. Not for Settled transactions.
+        
+        You will also want to delete this object if you call this directly.
+        
+        NOTE: Calling self.delete() will call this automatically so that the
+              transaction is deleted (if it can be) from the Skipjack system.
+        
+        """
         if self.current_status in (SETTLED, CREDITED, ARCHIVED, SPLIT_SETTLED):
             raise TransactionError('Deletion not allowed for %s transactions' %
-                                    self.get_current_status_display())
-        self._change_status('DELETE')
+                                    self.status_text)
+        response = self._change_status('DELETE')
+        if response.status != SUCCESSFUL:
+            raise TransactionError('Sorry, Skipjack said %s - %s' % (
+                                    response.status, response.message))
     
     class Meta:
         ordering = ['-creation_date']
+
+
+def delete_transaction(sender, instance, using, *args, **kwargs):
+    """Also delete from Skipjack when a Transaction is deleted from the db."""
+    instance.get_status()
+    try:
+        instance.delete_transaction()
+    except TransactionError:
+        pass # If the transaction can't be deleted, just ignore the issue.
+
+pre_delete.connect(delete_transaction, sender=Transaction)
 
 
 class Status(object):
@@ -373,11 +432,60 @@ class Status(object):
         
     def __str__(self):
         if self.transaction_id and self.message_detail:
-            return smart_unicode('%s - %s' % (self.transaction_id, self.message_detail))
+            return smart_unicode('%s - %s' % (self.transaction_id,
+                                              self.message_detail))
         elif self.transaction_id:
             return smart_unicode('%s' % self.transaction_id)
         else:
             return smart_unicode('Status unknown')
+    
+    @property
+    def transaction(self):
+        """So we can have the transaction object available."""
+        if not hasattr(self, '_transaction'):
+            try:
+                self._transaction = Transaction.objects.get(
+                                        transaction_id=self.transaction_id)
+            except Transaction.DoesNotExist:
+                self._transaction = None
+        return self._transaction
+
+
+class StatusChange(object):
+    """
+    A helper object for the Change Transaction Status function.
+    
+    """
+    def __init__(self, **kwargs):
+        """
+        Initialize from the keyword arguments.
+        
+        """
+        self.amount = None
+        self.desired_status = None
+        self.status = None  # SUCCESSFUL, UNSUCCESSFUL, or NOT_ALLOWED.
+        self.message = None
+        self.order_number = None
+        self.transaction_id = None
+        
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
+        # Special properties (we don't want to leave these as text):
+        if type(self.amount) is not Decimal:
+            self.amount = Decimal(self.amount)
+    
+    def __repr__(self):
+        return smart_unicode('<ChangeStatus: %s>' % str(self))
+        
+    def __str__(self):
+        if self.transaction_id and self.message:
+            return smart_unicode('%s %s - %s' % (self.desired_status,
+                                                 self.transaction_id,
+                                                 self.status))
+        elif self.transaction_id:
+            return smart_unicode('%s' % self.transaction_id)
+        else:
+            return smart_unicode('ChangeStatus unknown')
     
     @property
     def transaction(self):

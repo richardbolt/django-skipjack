@@ -23,12 +23,13 @@ class PaymentHelper(object):
     
     def get_response(self, data):
         """Gets the response from Skipjack from the supplied data."""
-        final_data = self.defaults + data # These must be lists, not dicts.
+        final_data = self.defaults + data  # These must be lists, not dicts.
         request_string = urllib.urlencode(final_data)
         response = urllib2.urlopen(self.endpoint, data=request_string).read()
-        response_dict = dict(zip(*[row for row in csv.reader(response.split("\n"),
-                                                             delimiter=',',
-                                                             quotechar='"')]))
+        response_dict = dict(zip(*[row for row in csv.reader(
+                                                           response.split("\n"),
+                                                           delimiter=',',
+                                                           quotechar='"')]))
         return response_dict
 
 
@@ -39,6 +40,13 @@ class StatusHelper(object):
     
     This is based from the Order Number, not the Transaction Id that we get
     from Skipjack when we make an authorize request.
+    
+    NOTE: Because the transaction id will change when a transaction is settled,
+          we allow for the transaction id being not present by returning the
+          latest transaction status details in that case as though no
+          transaction id was present. It's up to you to check for this changed
+          transaction id value.
+    
     
     """
     def __init__(self, defaults):
@@ -70,7 +78,9 @@ class StatusHelper(object):
                                      'approval_code': row[8],
                                      'batch_number': row[8]}
                     break
-        else:
+        if not response_dict:
+            # Transaction id either not specified, or no longer present,
+            # return the latest Transaction from Skipjack...
             row = response[-1]
             if len(row) is 9:
                 response_dict = {'amount': row[1],
@@ -103,6 +113,7 @@ class ChangeStatusHelper(object):
     This is based on the Skipjack Transaction Id, and not the Order Number.
     So much for consistency. We could submit request using the Order number
     to Skipjack, but we want to tie this directly to specific transactions.
+    Naturally transaction id will change when a transaction is settled. Ouch.
     
     """
     def __init__(self, defaults):
@@ -111,3 +122,23 @@ class ChangeStatusHelper(object):
             self.endpoint = SKIPJACK_TEST_STATUS_CHANGE_POST_URL
         else:
             self.endpoint = SKIPJACK_STATUS_CHANGE_POST_URL
+    
+    def get_response(self, data):
+        """Gets the response from Skipjack from the supplied data."""
+        final_data = self.defaults + data  # These must be lists, not dicts.
+        request_string = urllib.urlencode(final_data)
+        response = urllib2.urlopen(self.endpoint, data=request_string).read()
+        # First line of the response is the header, second line is the
+        # main response detail OR a textual description of an error.
+        response = [row for row in csv.reader(response.strip().split('\n'),
+                                              delimiter=',', quotechar='"')][1:]
+        response_dict = None
+        row = response[-1]
+        if len(row) is 7:
+            response_dict = {'amount': row[1],
+                             'desired_status': row[2],
+                             'status': row[3],
+                             'message': row[4],
+                             'order_number': row[5],
+                             'transaction_id': row[6]}
+        return response_dict

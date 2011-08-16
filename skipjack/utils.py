@@ -1,16 +1,18 @@
 """
 Utility methods to aid usage of Skipjack.
 
-Usage:
+Included utility functions:
+    create_transaction(data)
 
-Send some data (as a list of tuples as per the DEFAULT_LIST) and
-call create_response(data) and get a Transaction model object back.
+    get_transaction_status(order_number, transaction_id=None)
+
+    change_transaction_status(transaction_id, desired_status, amount=None)
 
 """
 from django.conf import settings
 
-from skipjack.helpers import PaymentHelper, StatusHelper
-from skipjack.models import Transaction, Status
+from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper
+from skipjack.models import Transaction, Status, StatusChange
 from skipjack.signals import payment_was_successful, payment_was_flagged
 
 
@@ -25,7 +27,7 @@ SZ_DEFAULT_LIST = [
 ]
 
 
-def create_response(data):
+def create_transaction(data):
     """
     Creates a Transaction in the database based on the returned data from
     Skipjack to an authorize request.
@@ -63,4 +65,20 @@ def get_transaction_status(order_number, transaction_id=None):
                                         transaction_id=transaction_id)
     response = Status(**response_dict)
     return response
+
+
+def change_transaction_status(transaction_id, desired_status, amount=None):
+    """
+    Changes a specified transaction to the desired status if Skipjack can.
     
+    Returns a textual description of the response from Skipjack.
+    
+    """
+    helper = ChangeStatusHelper(defaults=SZ_DEFAULT_LIST)
+    data = [('szTransactionId', transaction_id),
+            ('szDesiredStatus', desired_status)]
+    if amount:
+        data.append(('szAmount', str(amount)))
+    response_dict = helper.get_response(data)
+    response = StatusChange(**response_dict)
+    return response
