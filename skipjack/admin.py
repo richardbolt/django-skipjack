@@ -7,6 +7,9 @@ from skipjack.models import Transaction
 
 class TransactionAdmin(admin.ModelAdmin):
     """Admin model for the Transaction model."""
+    search_fields = ('transaction_id', 'amount', 'order_number', 'auth_code',
+                     'auth_response_code')
+    date_hierarchy = 'creation_date'
     list_display = ('transaction_id',
                     'creation_date',
                     'return_code',
@@ -31,16 +34,34 @@ class TransactionAdmin(admin.ModelAdmin):
                        'return_code',
                        'cavv_response',
                        'test_request',
-                       'creation_date')
+                       'creation_date',
+                       'mod_date',
+                       'status_text',
+                       'status_date',
+                       'current_status',
+                       'pending_status')
     fieldsets = (
         (None, {
-            'fields': [('transaction_id', 'return_code', 'test_request')]
+            'fields': (('transaction_id', 'return_code', 'test_request'),
+                        'creation_date', 'amount')
         }),
-        (_('Totals'), {
+        (_('Authorization'), {
             'classes': ('collapse', 'collapse-closed', 'wide',),
             'fields' : (('approved', 'auth_decline_message', 'auth_code',
                             'auth_response_code'),
                        )
+        }),
+        (_('Card verification value (CVV2)'), {
+            'classes': ('collapse', 'collapse-closed', 'wide',),
+            'fields' : [('cvv2_response_code', 'cvv2_response_message')]
+        }),
+        (_('Address verification service (AVS)'), {
+            'classes': ('collapse', 'collapse-closed', 'wide',),
+            'fields' : [('avs_code', 'avs_message',)]
+        }),
+        (_('Status'), {
+            'classes': ('collapse', 'collapse-closed', 'wide',),
+            'fields' : (('status_text', 'status_date'), ('current_status', 'pending_status'))
         }),
     )
     
