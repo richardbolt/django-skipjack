@@ -128,9 +128,9 @@ TRANSACTION_MAPPING = {
     'szTransactionAmount': 'amount',
     'szAuthorizationDeclinedMessage': 'auth_decline_message',
     'szCVV2ResponseMessage': 'cvv2_response_message',
-    'szAVSResponseCode': 'avs_code',
     'szCVV2ResponseCode': 'cvv2_response_code',
-    'szAVSResponseMessage': '',
+    'szAVSResponseCode': 'avs_code',
+    'szAVSResponseMessage': 'avs_message',
     'szTransactionFileName': 'transaction_id',
     'szCAVVResponseCode': 'cavv_response',
     'szAuthorizationResponseCode': 'auth_response_code',
@@ -201,6 +201,9 @@ class TransactionManager(models.Manager):
         kwargs = dict(map(lambda x: (TRANSACTION_MAPPING[x[0]], x[1]),
                           params.items()))
         del kwargs['']  # We mapped szSerialNumber to the empty string.
+        # Special cases.
+        # Amount is returned as '12002' instead of '120.02'.
+        kwargs['amount'] = Decimal(kwargs['amount']) / 100
         return self.create(**kwargs)
 
 
@@ -226,23 +229,24 @@ class Transaction(models.Model):
     transaction_id = models.CharField(max_length=18, db_index=True)
     auth_code = models.CharField(max_length=6,  # NB: min_length=6
                                  blank=True)
-    amount = models.CharField(max_length=12,  # NB: min_length=3
-                              help_text="NB: a value of 500 is 5 dollars.")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
     auth_decline_message = models.CharField(max_length=60, blank=True)
-    avs_code = models.CharField(max_length=10,
+    avs_code = models.CharField('AVS code', max_length=10,
                                 choices=AVS_RESPONSE_CODE_CHOICES)
-    avs_message = models.CharField(max_length=60, blank=True)
+    avs_message = models.CharField('AVS message', max_length=60, blank=True)
     order_number = models.CharField(max_length=20, db_index=True)
     auth_response_code = models.CharField(max_length=6,  # NB: min_length=6
                                           blank=True)
     approved = models.CharField(max_length=1, blank=True,
                                 choices=IS_APPROVED_CHOICES,
                                 help_text="Check AVS filtering!")
-    cvv2_response_code = models.CharField(max_length=2, blank=True,
+    cvv2_response_code = models.CharField('CVV2 response code',
+                                          max_length=2, blank=True,
                                           choices=CVV2_RESPONSE_CODE_CHOICES)
-    cvv2_response_message = models.CharField(max_length=60, blank=True)
+    cvv2_response_message = models.CharField('CVV2 response message',
+                                             max_length=60, blank=True)
     return_code = models.IntegerField(choices=RETURN_CODE_CHOICES)
-    cavv_response = models.CharField(max_length=2, blank=True,
+    cavv_response = models.CharField('CAVV response', max_length=2, blank=True,
                                      choices=CAVV_RESPONSE_CODE_CHOICES)
     test_request = models.BooleanField(default=False)
     
