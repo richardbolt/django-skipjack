@@ -135,7 +135,7 @@ TRANSACTION_MAPPING = {
     'szCAVVResponseCode': 'cavv_response',
     'szAuthorizationResponseCode': 'auth_response_code',
     # Fields that map directly to what we store in the Transaction.
-    'test_request': 'test_request',
+    'is_live': 'is_live',
     # Fields that don't map to what we store in the Transaction.
     'szSerialNumber': ''
 }
@@ -192,7 +192,12 @@ class TransactionError(StandardError):
 
 
 class TransactionManager(models.Manager):
-    """Solely to provide a create_from_dict() shortcut method."""
+    """
+    To provide:
+    
+    1. A create_from_dict() shortcut method.
+    
+    """
     def create_from_dict(self, params):
         """
         Handle creation of a Transaction object directly from a
@@ -202,6 +207,7 @@ class TransactionManager(models.Manager):
                           params.items()))
         del kwargs['']  # We mapped szSerialNumber to the empty string.
         # Special cases.
+        kwargs['amount'] = int(return_code)
         # Amount is returned as '12002' instead of '120.02'.
         kwargs['amount'] = Decimal(kwargs['amount']) / 100
         return self.create(**kwargs)
@@ -248,7 +254,7 @@ class Transaction(models.Model):
     return_code = models.IntegerField(choices=RETURN_CODE_CHOICES)
     cavv_response = models.CharField('CAVV response', max_length=2, blank=True,
                                      choices=CAVV_RESPONSE_CODE_CHOICES)
-    test_request = models.BooleanField(default=False)
+    is_live = models.BooleanField(default=True)
     
     creation_date = models.DateTimeField(auto_now_add=True)
     mod_date = models.DateTimeField(auto_now=True)
@@ -266,7 +272,7 @@ class Transaction(models.Model):
     @property
     def is_approved(self):
         """If the transaction was successful, or not."""
-        if (self.return_code in (1, '1') and self.auth_code and \
+        if (self.return_code == 1 and self.auth_code and \
                                       self.auth_response_code):
             return True
         return False

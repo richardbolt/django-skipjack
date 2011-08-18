@@ -36,7 +36,7 @@ def create_transaction(data):
     """
     helper = PaymentHelper(defaults=DEFAULT_LIST)
     response_dict = helper.get_response(data)
-    response_dict['test_request'] = settings.SKIPJACK_DEBUG
+    response_dict['is_live'] = not settings.SKIPJACK_DEBUG
     response = Transaction.objects.create_from_dict(response_dict)
     if response.is_approved:
         payment_was_successful.send(sender=response)
