@@ -79,6 +79,8 @@ def change_transaction_status(transaction_id, desired_status, amount=None):
             ('szDesiredStatus', desired_status)]
     if amount:
         data.append(('szAmount', str(amount)))
+    if desired_status.lower() == 'settle':
+        data.append(('szForceSettlement', '1'))
     response_dict = helper.get_response(data)
     response = StatusChange(**response_dict)
     return response
