@@ -37,8 +37,8 @@ class IsApprovedListFilter(SimpleListFilter):
 
 class TransactionAdmin(admin.ModelAdmin):
     """Admin model for the Transaction model."""
-    actions = ['delete_transactions', 'settle_transactions',
-               'refund_transactions']
+    actions = ['delete_transactions', 'refund_transactions',
+               'settle_transactions', 'update_transactions']
     search_fields = ('transaction_id', 'amount', 'order_number', 'auth_code',
                      'auth_response_code')
     date_hierarchy = 'creation_date'
@@ -139,8 +139,8 @@ class TransactionAdmin(admin.ModelAdmin):
         
         using = router.db_for_write(self.model)
         
-        # Populate deletable_objects, a data structure of all related objects that
-        # will also be deleted.
+        # Populate deletable_objects, a data structure of all related objects
+        # that will also be deleted.
         deletable_objects, perms_needed, protected = get_deleted_objects(
             queryset, opts, request.user, self.admin_site, using)
         
@@ -166,7 +166,8 @@ class TransactionAdmin(admin.ModelAdmin):
                     message_bit = "1 transaction was"
                 else:
                     message_bit = "%s transactions were" % rows_updated
-                messages.success(request, "%s successfully deleted." % message_bit)
+                messages.success(request, "%s successfully deleted." %
+                                                                    message_bit)
             
             # Return None to display the change list page again.
             return None
@@ -211,14 +212,7 @@ class TransactionAdmin(admin.ModelAdmin):
     delete_transactions.short_description = "Delete selected transactions..."
     
     def settle_transactions(self, request, queryset):
-        """
-        Settle (Charge) selected transactions with Skipjack.
-        
-        Offers up a confirmation page.
-        
-        Basically ripped from `django.contrib.admin.actions.delete_selected`.
-        
-        """
+        """Settle (Charge) selected transactions with Skipjack."""
         rows_updated = 0
         for obj in queryset:
             try:
@@ -256,7 +250,8 @@ class TransactionAdmin(admin.ModelAdmin):
             for obj in queryset:
                 try:
                     obj.refund()
-                    self.log_change(request, obj, 'Refunded %s' % force_unicode(obj))
+                    self.log_change(request, obj, 'Refunded %s' %
+                                                            force_unicode(obj))
                     rows_updated += 1
                 except TransactionError:
                     messages.error(request,
@@ -269,7 +264,8 @@ class TransactionAdmin(admin.ModelAdmin):
                     message_bit = "1 transaction was"
                 else:
                     message_bit = "%s transactions were" % rows_updated
-                messages.success(request, "%s successfully refunded." % message_bit)
+                messages.success(request, "%s successfully refunded." %
+                                                            message_bit)
             
             
             # Return None to display the change list page again.
@@ -312,6 +308,27 @@ class TransactionAdmin(admin.ModelAdmin):
         return TemplateResponse(request, template_list, context,
                                 current_app=self.admin_site.name)
     refund_transactions.short_description = "Refund selected transactions..."
-
+    
+    
+    def update_transactions(self, request, queryset):
+        """Update the status of selected transactions with Skipjack."""
+        rows_updated = 0
+        for obj in queryset:
+            try:
+                obj.update_status()
+                self.log_change(request, obj, 'Updated %s' % force_unicode(obj))
+                rows_updated += 1
+            except TransactionError:
+                messages.error(request,
+                               "Transaction %s could not be updated." %
+                               obj.transaction_id)
+        # Send a success message.
+        if rows_updated > 0:
+            if rows_updated == 1:
+                message_bit = "1 transaction was"
+            else:
+                message_bit = "%s transactions were" % rows_updated
+            messages.success(request, "%s successfully updated." % message_bit)
+    update_transactions.short_description = "Update status of selected transactions"
 
 admin.site.register(Transaction, TransactionAdmin)
