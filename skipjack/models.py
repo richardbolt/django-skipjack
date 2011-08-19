@@ -285,17 +285,30 @@ class Transaction(models.Model):
         """
         Updates the current status directly with a call to Skipjack.
         
-        You will need to call self.save() to ensure the status_text
+        You will need to call `self.save()` to ensure the status_text
         and date are written to the database, should you require it.
         
         NOTE: Skipjack will change the Transaction Id when a transaction moves
-              through processing from Authorized to Settled. This is problematic
-              and something to watch out for.
+              through processing from Authorized to Settled, or from Settled to
+              Credited. This is problematic and something to watch out for.
+              Basically Skipjack creates a new transaction with a new id, while
+              we want to keep the same transaction and update the id to the
+              correct value. This is handled with the `get_transaction_status()`
+              utility function.
+              
+              We don't send the transaction_id in cases where we might
+              reasonably expect it to change, and we just want the latest data.
+              This is where `self.is_approved == True`
         
         """
         from skipjack.utils import get_transaction_status
+        if self.transaction_id and not self.is_approved:
+            transaction_id = self.transaction_id
+        else:
+            # Approved transactions need the latest data.
+            transaction_id = None
         status = get_transaction_status(self.order_number,
-                                        transaction_id=self.transaction_id)
+                                        transaction_id=transaction_id)
         self.status_text = status.message_detail
         self.current_status = status.current_status
         self.pending_status = status.pending_status
@@ -397,11 +410,12 @@ class Transaction(models.Model):
 
 def delete_transaction(sender, instance, using, *args, **kwargs):
     """Also delete from Skipjack when a Transaction is deleted from the db."""
-    instance.get_status()
-    try:
-        instance.delete_transaction()
-    except TransactionError:
-        pass # If the transaction can't be deleted, just ignore the issue.
+    if instance.transaction_id:
+        instance.get_status()
+        try:
+            instance.delete_transaction()
+        except TransactionError:
+            pass # If the transaction can't be deleted, just ignore the issue.
 
 pre_delete.connect(delete_transaction, sender=Transaction)
 
