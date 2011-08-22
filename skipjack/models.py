@@ -327,7 +327,8 @@ class Transaction(models.Model):
         self.current_status = status.current_status
         self.pending_status = status.pending_status
         self.status_date = status.date
-        if status.transaction_id != self.transaction_id:
+        if status.transaction_id != self.transaction_id and \
+                                        status.approval_code == self.auth_code:
             self.transaction_id = status.transaction_id
         return status
     
