@@ -8,7 +8,9 @@ from django.conf import settings
 from skipjack import SKIPJACK_POST_URL, SKIPJACK_TEST_POST_URL, \
                      SKIPJACK_TEST_STATUS_POST_URL, SKIPJACK_STATUS_POST_URL, \
                      SKIPJACK_TEST_STATUS_CHANGE_POST_URL, \
-                     SKIPJACK_STATUS_CHANGE_POST_URL
+                     SKIPJACK_STATUS_CHANGE_POST_URL, \
+                     SKIPJACK_TEST_CLOSE_OPEN_BATCH_POST_URL, \
+                     SKIPJACK_CLOSE_OPEN_BATCH_POST_URL
 from skipjack.models import CURRENT_STATUS_CHOICES, PENDING_STATUS_CHOICES
 
 
@@ -141,4 +143,30 @@ class ChangeStatusHelper(object):
                              'message': row[4],
                              'order_number': row[5],
                              'transaction_id': row[6]}
+        return response_dict
+
+
+class CloseBatchHelper(object):
+    """
+    Helper for sending a close current batch request and receiving data from
+    Skipjack.
+    
+    """
+    def __init__(self, defaults):
+        self.defaults = defaults
+        if settings.SKIPJACK_DEBUG:
+            self.endpoint = SKIPJACK_TEST_CLOSE_OPEN_BATCH_POST_URL
+        else:
+            self.endpoint = SKIPJACK_CLOSE_OPEN_BATCH_POST_URL
+    
+    def get_response(self):
+        """Gets the response from Skipjack (no supplied data required)."""
+        request_string = urllib.urlencode(self.defaults)
+        response = urllib2.urlopen(self.endpoint, data=request_string).read()
+        response = [row for row in csv.reader(response.strip().split('\n'),
+                                              delimiter=',', quotechar='"')]
+        response_dict = None
+        row = response[0]
+        if len(row) is 12:
+            response_dict = {'status': row[1]}
         return response_dict

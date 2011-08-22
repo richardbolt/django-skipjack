@@ -14,3 +14,8 @@ SKIPJACK_TEST_STATUS_CHANGE_POST_URL = "https://developer.skipjackic.com" \
         "/scripts/evolvcc.dll?SJAPI_TransactionChangeStatusRequest"
 SKIPJACK_STATUS_CHANGE_POST_URL = "https://www.skipjackic.com" \
         "/scripts/evolvcc.dll?SJAPI_TransactionChangeStatusRequest"
+
+SKIPJACK_TEST_CLOSE_OPEN_BATCH_POST_URL = "https://developer.skipjackic.com" \
+        "/scripts/EvolvCC.dll?SJAPI_BATCHSETTLECLOSEOPENBATCH"
+SKIPJACK_CLOSE_OPEN_BATCH_POST_URL = "https://www.skipjackic.com" \
+        "/scripts/EvolvCC.dll?SJAPI_BATCHSETTLECLOSEOPENBATCH"

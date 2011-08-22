@@ -185,6 +185,15 @@ SUCCESSFUL = 'SUCCESSFUL'
 UNSUCCESSFUL = 'UNSUCCESSFUL'
 NOT_ALLOWED = 'NOT ALLOWED'
 
+CLOSE_BATCH_STATUS_CHOICES = (
+    ('0', 'Success'),
+    ('1', 'Call Failed'),
+    ('-1', 'Invalid Command'),
+    ('-2', 'Parameter Missing'),
+    ('-3', 'No records found'),
+    ('-15', 'Failure'),
+    ('-503', 'Request timed out'),
+)
 
 class TransactionError(StandardError):
     """Use for Transaction related errors."""

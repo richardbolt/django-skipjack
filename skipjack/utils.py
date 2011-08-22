@@ -11,8 +11,10 @@ Included utility functions:
 """
 from django.conf import settings
 
-from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper
-from skipjack.models import Transaction, Status, StatusChange
+from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper, \
+                             CloseBatchHelper
+from skipjack.models import Transaction, Status, StatusChange, \
+                            CLOSE_BATCH_STATUS_CHOICES
 from skipjack.signals import payment_was_successful, payment_was_flagged
 
 
@@ -83,4 +85,17 @@ def change_transaction_status(transaction_id, desired_status, amount=None):
         data.append(('szForceSettlement', '1'))
     response_dict = helper.get_response(data)
     response = StatusChange(**response_dict)
+    return response
+
+
+def close_current_batch():
+    """
+    Close the current (open) batch.
+    
+    Returns a textual description of the response from Skipjack.
+    
+    """
+    helper = CloseBatchHelper(defaults=SZ_DEFAULT_LIST)
+    response_dict = helper.get_response()
+    response = dict(CLOSE_BATCH_STATUS_CHOICES)[response_dict['status']]
     return response
