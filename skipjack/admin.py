@@ -47,10 +47,11 @@ class TransactionAdmin(admin.ModelAdmin):
                     'approved',
                     'is_approved',
                     'auth_code',
-                    'creation_date',
                     'current_status',
                     'pending_status',
                     'amount',
+                    'creation_date',
+                    'mod_date',
                     'is_live',
                     'return_code')
     list_filter = ('is_live', 'approved', 'creation_date', 'current_status',
