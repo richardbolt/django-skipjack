@@ -216,9 +216,12 @@ class TransactionManager(models.Manager):
                           params.items()))
         del kwargs['']  # We mapped szSerialNumber to the empty string.
         # Special cases.
-        # Amount is returned as '12002' instead of '120.02'.
-        kwargs['amount'] = Decimal(kwargs['amount']) / 100
-        if kwargs['auth_code'] == 'EMPTY':
+        if 'amount' in kwargs:
+            # Amount is returned as '12002' instead of '120.02'.
+            kwargs['amount'] = Decimal(kwargs['amount']) / 100
+        if 'return_code' in kwargs:
+            kwargs['return_code'] = int(kwargs['return_code'])
+        if 'auth_code' in kwargs and kwargs['auth_code'] == 'EMPTY':
             # Auth Code value of 'EMPTY' means we need to "empty" it...
             del kwargs['auth_code']
         return self.create(**kwargs)
