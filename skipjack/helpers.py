@@ -91,7 +91,7 @@ class StatusHelper(object):
                                  'order_number': row[4],
                                  'date': row[5],
                                  'transaction_id': row[6],
-                                 'approval_code': row[8],
+                                 'approval_code': row[7],
                                  'batch_number': row[8]}
         # Add the Status Code interpretation directly for more detail than the
         # status_message return value gives us.
@@ -105,6 +105,61 @@ class StatusHelper(object):
                     dict(PENDING_STATUS_CHOICES)[int(response_dict['code'][1])])
             response_dict['message_detail'] = ', '.join(status)
         return response_dict
+
+
+class StatusHistoryHelper(object):
+    """
+    Helper for sending a transaction status request and
+    receiving data from Skipjack about the status of said transaction.
+    
+    This is based from the Order Number, not the Transaction Id that we get
+    from Skipjack when we make an authorize request.
+    
+    This helper differs from the StatusHelper in that it returns the entire
+    history of the given order_number along with Transaction Ids, amounts,
+    and so forth.
+    
+    
+    """
+    def __init__(self, defaults):
+        self.defaults = defaults
+        if settings.SKIPJACK_DEBUG:
+            self.endpoint = SKIPJACK_TEST_STATUS_POST_URL
+        else:
+            self.endpoint = SKIPJACK_STATUS_POST_URL
+    
+    def get_response(self, order_number):
+        """Gets the response from Skipjack from the supplied data."""
+        final_data = self.defaults + [('szOrderNumber', order_number)]
+        request_string = urllib.urlencode(final_data)
+        response = urllib2.urlopen(self.endpoint, data=request_string).read()
+        # First line of the response is the header, lines that follow are
+        # individual transactions relating to the given order_number.
+        response = [row for row in csv.reader(response.strip().split('\n'),
+                                              delimiter=',', quotechar='"')][1:]
+        responses = []
+        for row in response:
+            if len(row) is 9:
+                response_dict = {'amount': row[1],
+                                 'code': row[2],
+                                 'message': row[3],
+                                 'order_number': row[4],
+                                 'date': row[5],
+                                 'transaction_id': row[6],
+                                 'approval_code': row[7],
+                                 'batch_number': row[8]}
+                # Add the Status Code interpretation directly for more detail than the
+                # status_message return value gives us.
+                status = []
+                if response_dict['code'][0] != '0':
+                    status.append(
+                        dict(CURRENT_STATUS_CHOICES)[int(response_dict['code'][0])])
+                if response_dict['code'][1] != '0':
+                    status.append(
+                        dict(PENDING_STATUS_CHOICES)[int(response_dict['code'][1])])
+                response_dict['message_detail'] = ', '.join(status)
+                responses.append(response_dict)
+        return responses
 
 
 class ChangeStatusHelper(object):

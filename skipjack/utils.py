@@ -12,7 +12,7 @@ Included utility functions:
 from django.conf import settings
 
 from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper, \
-                             CloseBatchHelper
+                             CloseBatchHelper, StatusHistoryHelper
 from skipjack.models import Transaction, Status, StatusChange, \
                             CLOSE_BATCH_STATUS_CHOICES
 from skipjack.signals import payment_was_successful, payment_was_flagged
@@ -67,6 +67,20 @@ def get_transaction_status(order_number, transaction_id=None):
                                         transaction_id=transaction_id)
     response = Status(**response_dict)
     return response
+
+
+def get_order_transaction_status_history(order_number):
+    """
+    Returns a list of Status objects representing the transaction history
+    of the given order.
+    
+    """
+    helper = StatusHistoryHelper(defaults=SZ_DEFAULT_LIST)
+    response_list = helper.get_response(order_number)
+    history = []
+    for response_dict in response_list:
+        history.append(Status(**response_dict))
+    return history
 
 
 def change_transaction_status(transaction_id, desired_status, amount=None):
