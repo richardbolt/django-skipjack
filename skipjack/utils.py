@@ -9,12 +9,15 @@ Included utility functions:
     change_transaction_status(transaction_id, desired_status, amount=None)
 
 """
+from decimal import Decimal
+
 from django.conf import settings
 
 from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper, \
                              CloseBatchHelper, StatusHistoryHelper
 from skipjack.models import Transaction, Status, StatusChange, \
-                            CLOSE_BATCH_STATUS_CHOICES
+                            CLOSE_BATCH_STATUS_CHOICES, \
+                            SETTLED, CREDITED, SPLIT_SETTLED
 from skipjack.signals import payment_was_successful, payment_was_flagged
 
 
@@ -113,3 +116,18 @@ def close_current_batch():
     response_dict = helper.get_response()
     response = dict(CLOSE_BATCH_STATUS_CHOICES)[response_dict['status']]
     return response
+
+
+def amount_paid(order_number):
+    """
+    Iterates through the status history for the given order and calculates
+    the amount paid by adding the amounts for Settled, Credited, or
+    Split Settled transactions.
+    
+    """    
+    amount = Decimal('0.00')
+    for trans in get_order_transaction_status_history(order_number):
+        if trans.current_status in (SETTLED, CREDITED, SPLIT_SETTLED):
+            amount += trans.amount
+    return amount
+    
