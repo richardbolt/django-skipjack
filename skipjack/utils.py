@@ -86,7 +86,8 @@ def get_order_transaction_status_history(order_number):
     return history
 
 
-def change_transaction_status(transaction_id, desired_status, amount=None):
+def change_transaction_status(transaction_id, desired_status, amount=None,
+                              force_settlement=True):
     """
     Changes a specified transaction to the desired status if Skipjack can.
     
@@ -98,8 +99,11 @@ def change_transaction_status(transaction_id, desired_status, amount=None):
             ('szDesiredStatus', desired_status)]
     if amount:
         data.append(('szAmount', str(amount)))
-    if desired_status.lower() == 'settle':
-        data.append(('szForceSettlement', '1'))
+    if desired_status.lower() in ('settle', 'credit'):
+        if force_settlement:
+            data.append(('szForceSettlement', '1'))
+        else:
+            data.append(('szForceSettlement', '0'))
     response_dict = helper.get_response(data)
     response = StatusChange(**response_dict)
     return response

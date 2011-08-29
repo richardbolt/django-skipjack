@@ -339,7 +339,7 @@ class Transaction(models.Model):
         return status
     update_status.alters_data = True
     
-    def _change_status(self, status=None, amount=None):
+    def _change_status(self, status=None, amount=None, force_settlement=True):
         """
         Change the Status of the Transaction.
         
@@ -353,9 +353,10 @@ class Transaction(models.Model):
         
         """
         from skipjack.utils import change_transaction_status
-        return change_transaction_status(self.transaction_id, status, amount)
+        return change_transaction_status(self.transaction_id, status, amount,
+                                         force_settlement)
     
-    def settle(self):
+    def settle(self, force_settlement=True):
         """
         Settle a previously Authorized transaction.
         
@@ -369,21 +370,23 @@ class Transaction(models.Model):
             raise TransactionError(
                 'Settlement not allowed for %s transactions' % self.status_text)
         # Need to report back if this request was not successful.
-        response = self._change_status('SETTLE')
+        response = self._change_status('SETTLE',
+                                       force_settlement=force_settlement)
         if response.status != SUCCESSFUL:
             raise TransactionError('Sorry, Skipjack said %s - %s' % (
                                     response.status, response.message))
     
-    def refund(self):
+    def refund(self, force_settlement=True):
         """Full refund."""
         if self.current_status != SETTLED or self.pending_status:
             raise TransactionError('Transaction must be Settled to refund.')
-        response = self._change_status('CREDIT', self.amount)
+        response = self._change_status('CREDIT', amount=self.amount,
+                                       force_settlement=force_settlement)
         if response.status != SUCCESSFUL:
             raise TransactionError('Sorry, Skipjack said %s - %s' % (
                                     response.status, response.message))
     
-    def partial_refund(self, amount=None):
+    def partial_refund(self, amount=None, force_settlement=True):
         """Partially refund the Transaction."""
         if not amount:
             raise TransactionError('Partial refund requires an amount.')
@@ -396,7 +399,8 @@ class Transaction(models.Model):
             raise TransactionError('Transaction status prevents a partial '\
                                    'refund at this time.')
         response = self._change_status('CREDIT',
-                                       amount=amount.quantize(Decimal('0.01')))
+                                       amount=amount.quantize(Decimal('0.01')),
+                                       force_settlement=force_settlement)
         if response.status != SUCCESSFUL:
             raise TransactionError('Sorry, Skipjack said %s - %s' % (
                                     response.status, response.message))
