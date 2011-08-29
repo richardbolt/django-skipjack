@@ -72,7 +72,7 @@ def get_transaction_status(order_number, transaction_id=None):
     return response
 
 
-def get_order_transaction_status_history(order_number):
+def get_order_transaction_history(order_number):
     """
     Returns a list of Status objects representing the transaction history
     of the given order.
@@ -130,7 +130,7 @@ def amount_paid(order_number):
     
     """    
     amount = Decimal('0.00')
-    for trans in get_order_transaction_status_history(order_number):
+    for trans in get_order_transaction_history(order_number):
         if trans.current_status in (SETTLED, CREDITED, SPLIT_SETTLED):
             amount += trans.amount
     return amount
