@@ -65,32 +65,32 @@ class SkipjackTestCase(unittest.TestCase):
         except IndexError:
             self.email = 'noone@nowhere.com'
         # Complate Data
-        self.base_data = [
+        self.base_data = {
             # Billing Information
-            ('SJName', 'John Doe'),                 # Required.
-            ('StreetAddress', '123 Demo Street'),   # Required.
-            ('City', 'Cincinatti'),                 # Required.
-            ('State', 'OH'),                        # Required.
-            ('ZipCode', '12345'),                   # Required.
-            ('Country', 'US'),                      # Optional (probably).
-            ('Email', self.email),                  # Required.
+            'SJName': 'John Doe',
+            'StreetAddress': '123 Demo Street',
+            'City': 'Cincinatti',
+            'State': 'OH',
+            'ZipCode': '12345',
+            'Country': 'US',            # Optional (probably).
+            'Email': 'jd@skipjack.com',
             # Shipping Information
-            ('ShipToState', 'OH'),                  # Required.
-            ('ShipToZipCode', '12345'),             # Optional Level 1.
-            ('ShipToCountry', 'US'),                # Optional Level 1.
-            ('ShipToPhone', '9024319977'),          # Required.
+            'ShipToState': 'OH',
+            'ShipToZipCode': '12345',   # Optional Level 1.
+            'ShipToCountry': 'US',      # Optional Level 1.
+            'ShipToPhone': '9024319977',
             # Transaction
-            ('OrderNumber', RandomOrderNumber()),   # Required.
-            ('TransactionAmount', '100.00'),        # Required.
+            'OrderNumber': '12345',
+            'TransactionAmount': '150.00',
             # OrderString: SKU~Description~UnitPrice~Qty~Taxable~OverrideAVS||
-            # No "~`!@#$%^&*()_-+= can be used according to Skipjack...
-            ('OrderString', 'SKU~Description~50.00~2~N~||'),
+            # No "~`!@#$%^&*()_-+= can be used...
+            'OrderString': 'SKU~Description~75.00~2~N~||',
             # Credit Card Information
-            ('AccountNumber', '4111111111111111'),  # Required.
-            ('Month', '08'),                        # Required.
-            ('Year', '2012'),                       # Required.
-            #('CVV2', '1234')                       # Optional.
-            ]
+            'AccountNumber': '4111111111111111',
+            'Month': '08',
+            'Year': '2012',
+            #'CVV2': '123'               # Optional.
+            }
     
     def tearDown(self):
         """Return DEBUG and SKIPJACK_DEBUG to their original settings."""
@@ -99,8 +99,7 @@ class SkipjackTestCase(unittest.TestCase):
     
     def test_success(self):
         """Successful Transaction."""
-        data = copy.copy(self.base_data)
-        transaction = create_transaction(data)
+        transaction = create_transaction(self.base_data)
         self.assertIsInstance(transaction, Transaction)
         self.assertTrue(transaction.is_approved)
         self.assertEqual(transaction.get_approved_display(), 'Approved')
@@ -109,7 +108,8 @@ class SkipjackTestCase(unittest.TestCase):
     
     def test_missing_fields(self):
         """Remove some required fields."""
-        data = del_list_item(copy.copy(self.base_data), 'ShipToPhone')
+        data = copy.copy(self.base_data)
+        del data['ShipToPhone']
         transaction = create_transaction(data)
         self.assertIsInstance(transaction, Transaction)
         self.assertFalse(transaction.is_approved)
@@ -125,7 +125,7 @@ class SkipjackTestCase(unittest.TestCase):
         
         """
         data = copy.copy(self.base_data)
-        data.append(('CVV2', '1234'))
+        data['CVV2'] = '123'
         transaction = create_transaction(data)
         self.assertIsInstance(transaction, Transaction)
         self.assertFalse(transaction.is_approved)
@@ -149,8 +149,8 @@ class SkipjackTestCase(unittest.TestCase):
         
         """
         # Add an & into the description.
-        data = del_list_item(copy.copy(self.base_data), 'OrderString')
-        data.append(('OrderString', '$KU~Descripti&n~50.00~2~N~||'))
+        data = copy.copy(self.base_data)
+        data['OrderString'] ='$KU~Descripti&n~50.00~2~N~||'
         transaction = create_transaction(data)
         self.assertIsInstance(transaction, Transaction)
         self.assertFalse(transaction.is_approved)
@@ -158,17 +158,15 @@ class SkipjackTestCase(unittest.TestCase):
         self.assertEqual(transaction.get_return_code_display(),
                          'Order string incorrect')
         # Removing expected parts of the order string...
-        data.append(('OrderString', 'Two pipes, no tilde...||'))
+        data['OrderString'] = 'Two pipes, no tilde...||'
         transaction = create_transaction(data)
         self.assertEqual(transaction.get_return_code_display(),
                          'Order string incorrect')
-        data = del_list_item(data, 'OrderString')
-        data.append(('OrderString', 'One pipe...|'))
+        data['OrderString'] = 'One pipe...|'
         transaction = create_transaction(data)
         self.assertEqual(transaction.get_return_code_display(),
                          'Order string incorrect')
-        data = del_list_item(data, 'OrderString')
-        data.append(('OrderString', 'Ending with 1 tilde, 2 pipes is ok...~||'))
+        data['OrderString'] = 'Ending with 1 tilde, 2 pipes is ok...~||'
         transaction = create_transaction(data)
         self.assertEqual(transaction.get_return_code_display(), 'Success')
     
@@ -177,8 +175,8 @@ class SkipjackTestCase(unittest.TestCase):
         Test an amount that is too large for the test card.
         
         """
-        data = del_list_item(copy.copy(self.base_data), 'TransactionAmount')
-        data.append(('TransactionAmount', '5000.00'))
+        data = copy.copy(self.base_data)
+        data['TransactionAmount'] = '5000.00'
         transaction = create_transaction(data)
         self.assertIsInstance(transaction, Transaction)
         self.assertFalse(transaction.is_approved)

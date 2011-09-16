@@ -13,40 +13,52 @@ Quickstart
 Below is a quick example to help you get started processing with Skipjack.
 The ``response`` variable returned from the ``create_transaction()`` is a
 ``Transaction`` object as defined in ``skipjack/models.py``.
-
+    
+    
+In your ``settings.py``, you'll want the following settings customized to match
+whatever your Skipjack data happens to be:
+    
+    SKIPJACK_DEBUG = DEBUG
+    SKIPJACK_SERIAL_NUMBER  ='000111222333'
+    SKIPJACK_DEVELOPER_SERIAL_NUMBER = 'ABC123456789'
+    
+    If you want to use the reports, you'll also need these settings:
+    
+    SKIPJACK_LOGIN_SERIAL_NUMBER = '000123456789'
+    SKIPJACK_LOGIN_USERNAME = 'MontyInc'
+    SKIPJACK_LOGIN_PASSWORD = 'Python'
+    
+    
+Basic usage:
+    
     from skipjack.utils import create_transaction
     
-    final_data = (
-        # Using a tuples to ensure order of the urlencoded string.
-        # This apparently matters a great deal to Skipjack. The SerialNumber
-        # must come first, and be followed by the DeveloperSerialNumber.
-        ('SerialNumber', '000111222333'),       # Required.
-        ('DeveloperSerialNumber', 'ABC123456789'),
+    final_data = {
         # Billing Information
-        ('SJName', 'John Doe'),                 # Required.
-        ('StreetAddress', '123 Demo Street'),   # Required.
-        ('City', 'Cincinatti'),                 # Required.
-        ('State', 'OH'),                        # Required.
-        ('ZipCode', '12345'),                   # Required.
-        ('Country', 'US'),                      # Optional (probably).
-        ('Email', 'jd@skipjack.com'),           # Required.
+        'SJName': 'John Doe',
+        'StreetAddress': '123 Demo Street',
+        'City': 'Cincinatti',
+        'State': 'OH',
+        'ZipCode': '12345',
+        'Country': 'US',            # Optional (probably).
+        'Email': 'jd@skipjack.com',
         # Shipping Information
-        ('ShipToState', 'OH'),                  # Required.
-        ('ShipToZipCode', '12345'),             # Optional Level 1.
-        ('ShipToCountry', 'US'),                # Optional Level 1.
-        ('ShipToPhone', '9024319977'),          # Required.
+        'ShipToState': 'OH',
+        'ShipToZipCode': '12345',   # Optional Level 1.
+        'ShipToCountry': 'US',      # Optional Level 1.
+        'ShipToPhone': '9024319977',
         # Transaction
-        ('OrderNumber', '12345'),               # Required.
-        ('TransactionAmount', '150.00'),        # Required.
+        'OrderNumber': '12345',
+        'TransactionAmount': '150.00',
         # OrderString: SKU~Description~UnitPrice~Qty~Taxable~OverrideAVS||
         # No "~`!@#$%^&*()_-+= can be used...
-        ('OrderString', 'SKU~Description~75.00~2~N~||'),
+        'OrderString': 'SKU~Description~75.00~2~N~||',
         # Credit Card Information
-        ('AccountNumber', '4111111111111111'),  # Required.
-        ('Month', '08'),                        # Required.
-        ('Year', '2012'),                       # Required.
-        ('CVV2', '1234')                        # Optional.
-        )
+        'AccountNumber': '4111111111111111',
+        'Month': '08',
+        'Year': '2012',
+        'CVV2': '123'               # Optional.
+        }
     
     transaction = create_transaction(final_data)
 

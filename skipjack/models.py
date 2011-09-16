@@ -4,8 +4,10 @@ from decimal import Decimal
 import time
 
 from django.db import models
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, post_save
 from django.utils.encoding import smart_unicode
+
+from skipjack import signals
 
 
 RETURN_CODE_CHOICES = (
@@ -334,8 +336,12 @@ class Transaction(models.Model):
     
     def update_status(self):
         """Shortcut that updates the status and saves the result."""
+        original_status = (self.current_status, self.pending_status)
         status = self.get_status()
         self.save()
+        if original_status != (status.current_status, status.pending_status):
+            signals.payment_status_changed.send(sender=Transaction,
+                                                instance=self)
         return status
     update_status.alters_data = True
     
@@ -426,6 +432,16 @@ class Transaction(models.Model):
     class Meta:
         ordering = ['-creation_date']
 
+
+def send_payment_signals(sender, instance, created, *args, **kwargs):
+    """Send the payment signals as required."""
+    if created:
+        if instance.is_approved:
+            signals.payment_was_successful.send(sender=sender,
+                                                instance=instance)
+        else:
+            signals.payment_was_flagged.send(sender=sender, instance=instance)
+post_save.connect(send_payment_signals, sender=Transaction)
 
 def delete_transaction(sender, instance, using, *args, **kwargs):
     """Also delete from Skipjack when a Transaction is deleted from the db."""

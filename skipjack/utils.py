@@ -9,12 +9,14 @@ Included utility functions:
     change_transaction_status(transaction_id, desired_status, amount=None)
 
 """
+import datetime
 from decimal import Decimal
 
 from django.conf import settings
 
 from skipjack.helpers import PaymentHelper, StatusHelper, ChangeStatusHelper, \
-                             CloseBatchHelper, StatusHistoryHelper
+                             CloseBatchHelper, StatusHistoryHelper, \
+                             ReportHelper
 from skipjack.models import Transaction, Status, StatusChange, \
                             CLOSE_BATCH_STATUS_CHOICES, \
                             SETTLED, CREDITED, SPLIT_SETTLED
@@ -31,6 +33,12 @@ SZ_DEFAULT_LIST = [
     ('szDeveloperSerialNumber', settings.SKIPJACK_DEVELOPER_SERIAL_NUMBER)
 ]
 
+REPORT_DEFAULT_LIST = [
+    ('sSerialNumber_Merchant', settings.SKIPJACK_SERIAL_NUMBER),
+    ('sSerialNumber_Login', settings.SKIPJACK_LOGIN_SERIAL_NUMBER),
+    ('sUsername', settings.SKIPJACK_LOGIN_USERNAME),
+    ('sPassword', settings.SKIPJACK_LOGIN_PASSWORD),
+]
 
 def create_transaction(data):
     """
@@ -38,7 +46,15 @@ def create_transaction(data):
     Skipjack to an authorize request.
     Sends signals payment_was_successful or payment_was_flagged.
     
+    Data must be coerced to a list so we can ensure the Skipjack serial
+    numbers go first, and in the correct order ('SerialNumber' followed by
+    'DeveloperSerialNumber') when we call urllib.urlencode in PaymentHelper.
+    
     """
+    if type(data) is dict:
+        data = data.items()
+    elif type(data) is tuple:
+        data = list(data)
     helper = PaymentHelper(defaults=DEFAULT_LIST)
     response_dict = helper.get_response(data)
     response_dict['is_live'] = not settings.SKIPJACK_DEBUG
@@ -134,4 +150,59 @@ def amount_paid(order_number):
         if trans.current_status in (SETTLED, CREDITED, SPLIT_SETTLED):
             amount += trans.amount
     return amount
+
+
+def transaction_reports(start_date, end_date=None, extra_fields=None):
+    """
+    Using the Customized Report API we can get transaction data for use
+    in adding transactions into your system, and checking their status
+    with one call.
+    
+    extra_fields should be a list of extra fields to show, such as:
+        ('CardType', 'PurchaseOrderNumber', 'CustomerName', 'CustomerEmail')
+        
+        By default we return the transaction date, status, id, order number,
+        approval code, amount, and original amount.
+    
+    
+    See the Skipjack Reporting API Integration Guide for further detail.
+    """
+    helper = ReportHelper(defaults=REPORT_DEFAULT_LIST)
+    if not end_date:
+        end_date = datetime.date.today()
+    data = [
+        ('sRecsPerPage', 1000),
+        ('sPosted', 1),
+        ('sMonthStart', start_date.month),
+        ('sDayStart', start_date.day),
+        ('sYearStart', start_date.year),
+        ('sMonthEnd', end_date.month),
+        ('sDayEnd', end_date.day),
+        ('sYearEnd', end_date.year),
+        
+        ('sStatusDenied', 'N'),
+        ('sStatusAuthorized', 'Y'),
+        ('sStatusSettled', 'Y'),
+        ('sStatusCredited', 'Y'),
+        ('sStatusDeleted', 'N'),
+        ('sStatusArchived', 'Y'),
+        ('sStatusPendCredit', 'Y'),
+        ('sStatusPendSettle', 'Y'),
+        ('sStatusPendManualSettle', 'Y'),
+        
+        ('sOrderBy', 'dtTransactionDate'),
+        ('showTransactionDate', 'Y'),
+        ('showStatusTransaction', 'Y'),
+        ('showTransactionFilename', 'Y'),
+        ('showOrderNumber', 'Y'),
+        ('showApprovalCode', 'Y'),
+        ('showAmount', 'Y'),
+        ('showOriginalAmount', 'Y')
+        ]
+    if extra_fields:
+        for field in extra_fields:
+            data.append(('show%s' % field, 'Y'))
+    response = helper.get_response(data)
+    return response
+
     
