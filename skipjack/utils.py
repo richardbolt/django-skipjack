@@ -152,11 +152,12 @@ def amount_paid(order_number):
     return amount
 
 
-def transaction_reports(start_date, end_date=None, extra_fields=None):
+def transaction_reports(start_date=None, end_date=None,
+                        extra_fields=None, **kwargs):
     """
     Using the Customized Report API we can get transaction data for use
     in adding transactions into your system, and checking their status
-    with one call.
+    with one call. Defaults to showing transactions from the current day.
     
     extra_fields should be a list of extra fields to show, such as:
         ('CardType', 'PurchaseOrderNumber', 'CustomerName', 'CustomerEmail')
@@ -164,10 +165,15 @@ def transaction_reports(start_date, end_date=None, extra_fields=None):
         By default we return the transaction date, status, id, order number,
         approval code, amount, and original amount.
     
+    kwargs offers complete override (or addition) of any desired fields
+    according to the Skipjack Reporting API for Customized Reports.
     
     See the Skipjack Reporting API Integration Guide for further detail.
+    
     """
     helper = ReportHelper(defaults=REPORT_DEFAULT_LIST)
+    if not start_date:
+        start_date = datetime.date.today()
     if not end_date:
         end_date = datetime.date.today()
     data = [
@@ -202,6 +208,9 @@ def transaction_reports(start_date, end_date=None, extra_fields=None):
     if extra_fields:
         for field in extra_fields:
             data.append(('show%s' % field, 'Y'))
+    if kwargs:
+        for field, val in kwargs.items():
+            data.append((field, val))
     response = helper.get_response(data)
     return response
 
