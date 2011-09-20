@@ -401,7 +401,8 @@ class Transaction(models.Model):
         if amount > self.amount:
             raise TransactionError('Partial refund requires the amount '\
                                    'be less than the Transaction amount.')
-        if self.current_status != SETTLED or self.pending_status:
+        if self.current_status not in (SETTLED, CREDITED, SPLIT_SETTLED) or \
+                                                            self.pending_status:
             raise TransactionError('Transaction status prevents a partial '\
                                    'refund at this time.')
         response = self._change_status('CREDIT',
