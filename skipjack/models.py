@@ -412,6 +412,19 @@ class Transaction(models.Model):
             raise TransactionError('Sorry, Skipjack said %s - %s' % (
                                     response.status, response.message))
     
+    def authorize_additional(self, amount=None, force_settlement=True):
+        """Authorized an additional amount for the Transaction."""
+        if not amount:
+            raise TransactionError('Authorize additional requires an amount.')
+        if type(amount) is not Decimal:
+            amount = Decimal(amount)
+        response = self._change_status('AuthorizeAdditional',
+                                       amount=amount.quantize(Decimal('0.01')),
+                                       force_settlement=force_settlement)
+        if response.status != SUCCESSFUL:
+            raise TransactionError('Sorry, Skipjack said %s - %s' % (
+                                    response.status, response.message))
+    
     def delete_transaction(self):
         """
         Mark the transaction as deleted. Not for Settled transactions.
